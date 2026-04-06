@@ -72,13 +72,8 @@ CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(W55RP20EthernetComponent),
-            # SPI / control pins (defaults = W55RP20-EVB-Pico)
-            cv.Optional(CONF_CS_PIN, default=17): rp2040_pin,
-            cv.Optional(CONF_MISO_PIN, default=16): rp2040_pin,
-            cv.Optional(CONF_MOSI_PIN, default=19): rp2040_pin,
-            cv.Optional(CONF_CLK_PIN, default=18): rp2040_pin,
-            cv.Optional(CONF_INTERRUPT_PIN, default=21): rp2040_pin,
-            cv.Optional(CONF_RESET_PIN, default=20): rp2040_pin,
+            # W55RP20 has internal SPI — only CS pin is needed
+            cv.Optional(CONF_CS_PIN, default=20): rp2040_pin,
             # Network
             cv.Optional(CONF_MANUAL_IP): MANUAL_IP_SCHEMA,
             cv.Optional(CONF_DOMAIN, default=".local"): cv.domain_name,
@@ -110,13 +105,8 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    # Pins
+    # W55RP20 only needs CS pin (internal SPI)
     cg.add(var.set_cs_pin(config[CONF_CS_PIN]))
-    cg.add(var.set_miso_pin(config[CONF_MISO_PIN]))
-    cg.add(var.set_mosi_pin(config[CONF_MOSI_PIN]))
-    cg.add(var.set_clk_pin(config[CONF_CLK_PIN]))
-    cg.add(var.set_interrupt_pin(config[CONF_INTERRUPT_PIN]))
-    cg.add(var.set_reset_pin(config[CONF_RESET_PIN]))
 
     # Network
     cg.add(var.set_use_address(config[CONF_USE_ADDRESS]))

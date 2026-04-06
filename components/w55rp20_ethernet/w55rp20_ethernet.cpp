@@ -37,21 +37,9 @@ namespace esphome
     {
       ESP_LOGCONFIG(TAG, "Setting up W55RP20 Ethernet...");
 
-      // Create the lwIP driver with the configured pins.
-      eth = new Wiznet55rp20lwIP(this->cs_pin_, SPI, this->int_pin_);
-
-      // Configure SPI pins
-      SPI.setRX(this->miso_pin_);
-      SPI.setCS(this->cs_pin_);
-      SPI.setSCK(this->clk_pin_);
-      SPI.setTX(this->mosi_pin_);
-
-      // Hardware-reset the W55RP20
-      pinMode(this->rst_pin_, OUTPUT);
-      digitalWrite(this->rst_pin_, LOW);
-      delayMicroseconds(500);
-      digitalWrite(this->rst_pin_, HIGH);
-      delay(200);
+      // W55RP20 has the Ethernet MAC+PHY integrated — SPI is internal.
+      // Only the CS pin is needed; no external SPI pin config or HW reset.
+      eth = new Wiznet55rp20lwIP(this->cs_pin_);
 
       // Apply static IP before begin() if configured
       if (this->has_manual_ip_)
