@@ -58,9 +58,6 @@ MANUAL_IP_SCHEMA = cv.Schema(
 )
 
 
-CONF_ETHERNET = "ethernet"
-
-
 def _validate(config):
     if CONF_USE_ADDRESS not in config:
         if CONF_MANUAL_IP in config:
@@ -68,13 +65,6 @@ def _validate(config):
         else:
             use_address = CORE.name + config[CONF_DOMAIN]
         config[CONF_USE_ADDRESS] = use_address
-
-    # ESPHome's core reads CORE.config["ethernet"]["use_address"] for the
-    # device address.  Copy our use_address into the ethernet stub config.
-    if CONF_ETHERNET not in CORE.raw_config:
-        CORE.raw_config[CONF_ETHERNET] = {}
-    CORE.raw_config[CONF_ETHERNET][CONF_USE_ADDRESS] = config[CONF_USE_ADDRESS]
-
     return config
 
 
@@ -133,5 +123,14 @@ async def to_code(config):
 
     if CONF_MANUAL_IP in config:
         cg.add(var.set_manual_ip(manual_ip(config[CONF_MANUAL_IP])))
+
+    # ESPHome core reads CORE.config["ethernet"]["use_address"] for the
+    # device address (storage_json, mdns, etc.).  Inject it here so the
+    # auto-loaded ethernet stub carries the value.
+    eth_conf = CORE.config.get("ethernet")
+    if eth_conf is not None:
+        eth_conf[CONF_USE_ADDRESS] = config[CONF_USE_ADDRESS]
+    else:
+        CORE.config["ethernet"] = {CONF_USE_ADDRESS: config[CONF_USE_ADDRESS]}
 
     cg.add_define("USE_W5500_ETHERNET")
