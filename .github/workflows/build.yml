@@ -1,4 +1,4 @@
-name: PlatformIO CI
+name: ESPHome Build
 
 on: [push]
 
@@ -8,23 +8,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v3
+
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pip
             ~/.platformio/.cache
-          key: ${{ runner.os }}-pio
-      - uses: actions/setup-python@v4
+          key: ${{ runner.os }}-esphome-${{ hashFiles('w5500-hello.yml') }}
+
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
-      - name: Install custom ESPHome version
-        run: pip install "https://github.com/maxgerhardt/esphome/archive/refs/heads/dev.zip"
-      - name: Make ESPHome generate PIO project
+          python-version: "3.12"
+
+      - name: Install ESPHome
+        run: pip install --upgrade esphome
+
+      - name: Generate PlatformIO project
         run: esphome compile --only-generate w5500-hello.yml
-      - name: Build PlatformIO Project
-        run: pio run -d ".esphome/build/w5500-hello"
+
+      - name: Build firmware
+        run: |
+          pip install --upgrade platformio
+          pio run -d ".esphome/build/w5500-hello"
+
       - name: Archive firmware
         uses: actions/upload-artifact@v4
         with:

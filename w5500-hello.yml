@@ -1,66 +1,124 @@
 ---
 esphome:
   name: w5500-hello
-  # Uncomment this if you want to upload via debug probe
+  # Uncomment to upload via debug probe:
   # platformio_options:
   #   upload_protocol: cmsis-dap
   #   debug_tool: cmsis-dap
 
 rp2040:
-  board: wiznet_5500_evb_pico  # WIZnet W5500-EVB-Pico
-  
+  board: wiznet_5500_evb_pico  # W55RP20-EVB-Pico / W5500-EVB-Pico
   framework:
-    platform_version: https://github.com/maxgerhardt/platform-raspberrypi.git#v1.2.0-gcc12
-    version: 3.7.2
-    source: https://github.com/earlephilhower/arduino-pico.git#c670f66140e4188aab4a6f1a92644791a89cb153
+    # GCC 14, pico-sdk 2.0
+    platform_version: https://github.com/maxgerhardt/platform-raspberrypi.git
+    # arduino-pico 5.5.0
+    version: 5.5.0
 
-# shorthand
 external_components:
-  - source: eth_components
+  - source: components
 
 w5500_ethernet:
-  # not supported in code, DHCP always used
+  # DHCP by default.  Uncomment for static IP:
   # manual_ip:
   #   static_ip: 192.168.0.123
   #   gateway: 192.168.0.1
   #   subnet: 255.255.255.0
   #   dns1: 8.8.8.8
 
-# This entry enables that HomeAssisant can reach this device
-# Under the hostname w5500-hello.local
+# ---- Home Assistant native API ----
 api:
 
-# Example configuration entry
+# ---- OTA (network upload) ----
+ota:
+  - platform: esphome
+
+# ---- Logging ----
+logger:
+  level: DEBUG
+  hardware_uart: USB_CDC    # or UART0 for GP0
+
+# ---- Web dashboard ----
+web_server:
+  port: 80
+
+# ---- NTP time ----
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Asia/Kuala_Lumpur    # adjust to your TZ
+    servers:
+      - pool.ntp.org
+      - time.google.com
+
+# ---- UART for Modbus RTU ----
+uart:
+  id: modbus_uart
+  rx_pin: GPIO1
+  tx_pin: GPIO0
+  baud_rate: 9600
+
+modbus:
+  id: modbus1
+  uart_id: modbus_uart
+
+# Uncomment and configure for your Modbus device:
+# modbus_controller:
+#   - id: modbus_device1
+#     modbus_id: modbus1
+#     address: 0x01
+#     update_interval: 5s
+#     sensors:
+#       - name: "Holding Register 0"
+#         register_type: holding
+#         address: 0
+#         value_type: U_WORD
+
+# ---- HTTP telemetry to ThingsBoard ----
+http_request:
+  timeout: 10s
+
+# ---- Sensors / switches ----
 switch:
-  - platform: gpio
-    pin: 3
-    name: "GPIO Pin 3"
-    id: example_gpio
-  # for this to work properly, the "output" and "interval" sections below
-  # MUST BE COMPLETELY COMMENTED OUT!!
   - platform: gpio
     pin: 25
     name: "Onboard LED"
     id: onboard_led
 
+sensor:
+  # Expose free heap as a sensor (useful for debugging)
+  - platform: template
+    name: "Free Heap"
+    id: free_heap
+    unit_of_measurement: "B"
+    update_interval: 30s
+    lambda: |-
+      return rp2040.getFreeHeap();
 
-logger:
-  level: DEBUG
-  # can say UART0 (for output on GP0) or USB_CDC here (USB port) for log messages
-  #hardware_uart: UART0
-  hardware_uart: USB_CDC
+# ---- Periodic actions ----
+interval:
+  # POST telemetry to ThingsBoard every 30 s
+  - interval: 30s
+    then:
+      - http_request.post:
+          url: "http://YOUR_TB_HOST/api/v1/YOUR_ACCESS_TOKEN/telemetry"
+          headers:
+            Content-Type: application/json
+          # Build JSON from sensor values:
+          body: !lambda |-
+            char buf[128];
+            snprintf(buf, sizeof(buf),
+              "{\"heap\":%d}",
+              (int) id(free_heap).state);
+            return std::string(buf);
 
-# Debug blinking: Continously toggle the onboard LED to see that the firmware is running
-# output:
-#   - platform: gpio
-#     pin:
-#       number: 25
-#       mode: output
-#     id: LED
-
-# interval:
-#   - interval: 500ms
-#     then:
-#       - output.turn_on: LED
-#       - delay: 250ms
-#       - output.turn_off: LED
+  # TCP ping every 60 s (proves raw TCP works over W5500)
+  - interval: 60s
+    then:
+      - lambda: |-
+          WiFiClient client;
+          if (client.connect(IPAddress(192,168,1,1), 80)) {
+            ESP_LOGI("tcp_ping", "TCP ping OK to 192.168.1.1:80");
+            client.stop();
+          } else {
+            ESP_LOGW("tcp_ping", "TCP ping FAILED to 192.168.1.1:80");
+          }

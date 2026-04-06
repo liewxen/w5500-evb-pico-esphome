@@ -1,4 +1,3 @@
-from esphome import pins
 import esphome.config_validation as cv
 import esphome.codegen as cg
 from esphome.const import (
@@ -6,7 +5,6 @@ from esphome.const import (
     CONF_ID,
     CONF_MANUAL_IP,
     CONF_STATIC_IP,
-    # CONF_TYPE,
     CONF_USE_ADDRESS,
     CONF_GATEWAY,
     CONF_SUBNET,
@@ -18,10 +16,16 @@ from esphome.components.network import IPAddress
 
 CONFLICTS_WITH = []
 DEPENDENCIES = ["rp2040"]
-# Note: Needs my forked ESPHome version to work correctly.
-AUTO_LOAD = ["network"]
+AUTO_LOAD = ["network", "ethernet"]
 
-ethernet_ns = cg.esphome_ns.namespace("w5500_ethernet")
+w5500_ns = cg.esphome_ns.namespace("w5500_ethernet")
+
+ethernet_base_ns = cg.esphome_ns.namespace("ethernet")
+EthernetBaseComponent = ethernet_base_ns.class_("EthernetComponent", cg.Component)
+
+W5500EthernetComponent = w5500_ns.class_(
+    "W5500EthernetComponent", EthernetBaseComponent
+)
 
 MANUAL_IP_SCHEMA = cv.Schema(
     {
@@ -33,8 +37,7 @@ MANUAL_IP_SCHEMA = cv.Schema(
     }
 )
 
-EthernetComponent = ethernet_ns.class_("W5500EthernetComponent", cg.Component)
-ManualIP = ethernet_ns.struct("ManualIP")
+ManualIP = w5500_ns.struct("ManualIP")
 
 
 def _validate(config):
@@ -50,7 +53,7 @@ def _validate(config):
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
-            cv.GenerateID(): cv.declare_id(EthernetComponent),
+            cv.GenerateID(): cv.declare_id(W5500EthernetComponent),
             cv.Optional(CONF_MANUAL_IP): MANUAL_IP_SCHEMA,
             cv.Optional(CONF_DOMAIN, default=".local"): cv.domain_name,
             cv.Optional(CONF_USE_ADDRESS): cv.string_strict,
@@ -81,9 +84,4 @@ async def to_code(config):
     if CONF_MANUAL_IP in config:
         cg.add(var.set_manual_ip(manual_ip(config[CONF_MANUAL_IP])))
 
-
-    #cg.add_define("USE_ETHERNET")
     cg.add_define("USE_W5500_ETHERNET")
-
-    #if CORE.using_arduino:
-    #    cg.add_library("W5500lwIP", None)
