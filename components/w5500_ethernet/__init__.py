@@ -49,11 +49,11 @@ def rp2040_pin(value):
 
 MANUAL_IP_SCHEMA = cv.Schema(
     {
-        cv.Required(CONF_STATIC_IP): cv.ipv4,
-        cv.Required(CONF_GATEWAY): cv.ipv4,
-        cv.Required(CONF_SUBNET): cv.ipv4,
-        cv.Optional(CONF_DNS1, default="0.0.0.0"): cv.ipv4,
-        cv.Optional(CONF_DNS2, default="0.0.0.0"): cv.ipv4,
+        cv.Required(CONF_STATIC_IP): cv.ipv4address,
+        cv.Required(CONF_GATEWAY): cv.ipv4address,
+        cv.Required(CONF_SUBNET): cv.ipv4address,
+        cv.Optional(CONF_DNS1, default="0.0.0.0"): cv.ipv4address,
+        cv.Optional(CONF_DNS2, default="0.0.0.0"): cv.ipv4address,
     }
 )
 
@@ -89,14 +89,19 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
+def _ip_to_codegen(addr):
+    """Convert ipaddress.IPv4Address to codegen IPAddress(a, b, c, d)."""
+    return IPAddress(*list(addr.packed))
+
+
 def manual_ip(config):
     return cg.StructInitializer(
         ManualIP,
-        ("static_ip", IPAddress(*config[CONF_STATIC_IP].args)),
-        ("gateway", IPAddress(*config[CONF_GATEWAY].args)),
-        ("subnet", IPAddress(*config[CONF_SUBNET].args)),
-        ("dns1", IPAddress(*config[CONF_DNS1].args)),
-        ("dns2", IPAddress(*config[CONF_DNS2].args)),
+        ("static_ip", _ip_to_codegen(config[CONF_STATIC_IP])),
+        ("gateway", _ip_to_codegen(config[CONF_GATEWAY])),
+        ("subnet", _ip_to_codegen(config[CONF_SUBNET])),
+        ("dns1", _ip_to_codegen(config[CONF_DNS1])),
+        ("dns2", _ip_to_codegen(config[CONF_DNS2])),
     )
 
 
