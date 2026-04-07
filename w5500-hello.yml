@@ -41,27 +41,37 @@ logger:
 web_server:
   port: 80
 
-# ---- NTP time ----
-time:
-  - platform: sntp
-    id: sntp_time
-    timezone: Asia/Kuala_Lumpur    # adjust to your TZ
-    servers:
-      - pool.ntp.org
-      - time.google.com
+# ---- Onboard LED ----
+switch:
+  - platform: gpio
+    pin: 25
+    name: "Onboard LED"
+    id: onboard_led
 
-# ---- UART for Modbus RTU ----
-uart:
-  id: modbus_uart
-  rx_pin: GPIO1
-  tx_pin: GPIO0
-  baud_rate: 9600
+# ======================================================================
+# Reference: advanced features (uncomment what you need)
+# ======================================================================
 
-modbus:
-  id: modbus1
-  uart_id: modbus_uart
+# # ---- NTP time ----
+# time:
+#   - platform: sntp
+#     id: sntp_time
+#     timezone: Asia/Kuala_Lumpur    # adjust to your TZ
+#     servers:
+#       - pool.ntp.org
+#       - time.google.com
 
-# Uncomment and configure for your Modbus device:
+# # ---- UART for Modbus RTU ----
+# uart:
+#   id: modbus_uart
+#   rx_pin: GPIO1
+#   tx_pin: GPIO0
+#   baud_rate: 9600
+#
+# modbus:
+#   id: modbus1
+#   uart_id: modbus_uart
+#
 # modbus_controller:
 #   - id: modbus_device1
 #     modbus_id: modbus1
@@ -73,52 +83,42 @@ modbus:
 #         address: 0
 #         value_type: U_WORD
 
-# ---- HTTP telemetry to ThingsBoard ----
-http_request:
-  timeout: 10s
+# # ---- HTTP telemetry (e.g. ThingsBoard) ----
+# http_request:
+#   timeout: 10s
+#
+# sensor:
+#   - platform: template
+#     name: "Free Heap"
+#     id: free_heap
+#     unit_of_measurement: "B"
+#     update_interval: 30s
+#     lambda: |-
+#       return rp2040.getFreeHeap();
+#
+# interval:
+#   - interval: 30s
+#     then:
+#       - http_request.post:
+#           url: "http://YOUR_TB_HOST/api/v1/YOUR_ACCESS_TOKEN/telemetry"
+#           headers:
+#             Content-Type: application/json
+#           body: !lambda |-
+#             char buf[128];
+#             snprintf(buf, sizeof(buf),
+#               "{\"heap\":%d}",
+#               (int) id(free_heap).state);
+#             return std::string(buf);
 
-# ---- Sensors / switches ----
-switch:
-  - platform: gpio
-    pin: 25
-    name: "Onboard LED"
-    id: onboard_led
-
-sensor:
-  # Expose free heap as a sensor (useful for debugging)
-  - platform: template
-    name: "Free Heap"
-    id: free_heap
-    unit_of_measurement: "B"
-    update_interval: 30s
-    lambda: |-
-      return rp2040.getFreeHeap();
-
-# ---- Periodic actions ----
-interval:
-  # POST telemetry to ThingsBoard every 30 s
-  - interval: 30s
-    then:
-      - http_request.post:
-          url: "http://YOUR_TB_HOST/api/v1/YOUR_ACCESS_TOKEN/telemetry"
-          headers:
-            Content-Type: application/json
-          # Build JSON from sensor values:
-          body: !lambda |-
-            char buf[128];
-            snprintf(buf, sizeof(buf),
-              "{\"heap\":%d}",
-              (int) id(free_heap).state);
-            return std::string(buf);
-
-  # TCP ping every 60 s (proves raw TCP works over W5500)
-  - interval: 60s
-    then:
-      - lambda: |-
-          WiFiClient client;
-          if (client.connect(IPAddress(192,168,1,1), 80)) {
-            ESP_LOGI("tcp_ping", "TCP ping OK to 192.168.1.1:80");
-            client.stop();
-          } else {
-            ESP_LOGW("tcp_ping", "TCP ping FAILED to 192.168.1.1:80");
-          }
+# # ---- TCP ping (proves raw TCP works over W5500) ----
+# interval:
+#   - interval: 60s
+#     then:
+#       - lambda: |-
+#           WiFiClient client;
+#           if (client.connect(IPAddress(192,168,1,1), 80)) {
+#             ESP_LOGI("tcp_ping", "TCP ping OK to 192.168.1.1:80");
+#             client.stop();
+#           } else {
+#             ESP_LOGW("tcp_ping", "TCP ping FAILED to 192.168.1.1:80");
+#           }

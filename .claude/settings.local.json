@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec:*)",
+      "WebSearch",
+      "WebFetch(domain:esphome.io)",
+      "Bash(gh pr:*)"
+    ]
+  }
+}
